@@ -131,3 +131,48 @@ button:hover {
   border-radius: 5px;
   margin-top: 5px;
 }
+
+/* Media controls */
+.media-controls {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.media-button {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 2px solid #007bff;
+  background-color: #fff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.media-button:hover {
+  background-color: #f0f0f0;
+}
+
+.media-button.video-on {
+  background-color: #007bff;
+  color: white;
+}
+
+.media-button.video-off {
+  background-color: #dc3545;
+  color: white;
+}
+
+.media-button.audio-on {
+  background-color: #007bff;
+  color: white;
+}
+
+.media-button.audio-off {
+  background-color: #dc3545;
+  color: white;
+}
+
+.media-button .icon {
+  font-size: 18px;
+}

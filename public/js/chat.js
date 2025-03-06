@@ -18,9 +18,15 @@ const configuration = {
 };
 
 // 初始化本地视频
+let localStream;
+
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
+    localStream = stream;
     document.getElementById('localVideo').srcObject = stream;
+
+    // 初始化媒体控制按钮
+    initMediaControls();
 
     // 自动加入房间
     socket.emit('join', { room: roomId, userName: userName });
@@ -199,3 +205,33 @@ document.getElementById('messageInput').addEventListener('keypress', function(e)
     sendMessage();
   }
 });
+
+// 初始化媒体控制
+function initMediaControls() {
+  const videoBtn = document.getElementById('videoControl');
+  const audioBtn = document.getElementById('audioControl');
+
+  // 视频控制
+  videoBtn.addEventListener('click', () => {
+    const videoTrack = localStream.getVideoTracks()[0];
+    if (videoTrack) {
+      videoTrack.enabled = !videoTrack.enabled;
+      videoBtn.classList.toggle('video-on', videoTrack.enabled);
+      videoBtn.classList.toggle('video-off', !videoTrack.enabled);
+    }
+  });
+
+  // 音频控制
+  audioBtn.addEventListener('click', () => {
+    const audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) {
+      audioTrack.enabled = !audioTrack.enabled;
+      audioBtn.classList.toggle('audio-on', audioTrack.enabled);
+      audioBtn.classList.toggle('audio-off', !audioTrack.enabled);
+    }
+  });
+
+  // 初始化按钮状态
+  videoBtn.classList.add('video-on');
+  audioBtn.classList.add('audio-on');
+}
