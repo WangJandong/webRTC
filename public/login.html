@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>WebRTC Chat - Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f4f4f9;
+    }
+
+    #login {
+      text-align: center;
+      background: #ffffff;
+      padding: 20px 40px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      width: 300px;
+    }
+
+    h1 {
+      margin-top: 0;
+      color: #007bff;
+    }
+
+    #login input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    #login button {
+      width: 100%;
+      padding: 10px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    #login button:hover {
+      background-color: #0056b3;
+    }
+
+    #error {
+      color: red;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="login">
+    <h1>WebRTC Chat</h1>
+    <input type="text" id="userNameInput" placeholder="Enter your name">
+    <input type="text" id="roomInput" placeholder="Enter room ID">
+    <button onclick="joinRoom()">Join Room</button>
+    <div id="error"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    function joinRoom() {
+      const userName = document.getElementById('userNameInput').value.trim();
+      const room = document.getElementById('roomInput').value.trim();
+      
+      if (!userName) {
+        document.getElementById('error').textContent = 'Please enter a user name';
+        return;
+      }
+      
+      if (!room) {
+        document.getElementById('error').textContent = 'Please enter a room ID';
+        return;
+      }
+      
+      // 保存用户信息到sessionStorage
+      sessionStorage.setItem('userName', userName);
+      sessionStorage.setItem('roomId', room);
+      
+      // 加入房间
+      socket.emit('join', { room, userName });
+      
+      socket.on('joined', (data) => {
+        // 保存用户颜色
+        sessionStorage.setItem('userColor', data.color);
+        // 跳转到聊天页面
+        window.location.href = '/chat';
+      });
+      
+      socket.on('error', (message) => {
+        document.getElementById('error').textContent = message;
+      });
+    }
+  </script>
+</body>
+</html>
