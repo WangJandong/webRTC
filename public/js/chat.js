@@ -98,6 +98,8 @@ socket.on('userLeft', ({ id }) => {
   }
 });
 
+
+
 function createOrUpdateRemoteVideo(userId, stream) {
   let videoElement = document.getElementById(`video-${userId}`);
   if (!videoElement) {
@@ -112,6 +114,7 @@ function createOrUpdateRemoteVideo(userId, stream) {
   videoElement.srcObject = stream;
 }
 
+// 确保主视频框只显示本地视频或选中的远程视频
 function setMainVideo(userId, stream) {
   const mainVideo = document.getElementById('mainVideo');
   mainVideo.srcObject = stream;
@@ -121,6 +124,8 @@ function setMainVideo(userId, stream) {
     video.style.borderColor = video.id === `video-${userId}` ? '#007bff' : '#ccc';
   });
 }
+
+
 
 function initializePeerConnection(userId) {
   const peerConnection = new RTCPeerConnection(configuration);
