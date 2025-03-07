@@ -117,14 +117,20 @@ function createOrUpdateRemoteVideo(userId, stream) {
 // 确保主视频框只显示本地视频或选中的远程视频
 function setMainVideo(userId, stream) {
   const mainVideo = document.getElementById('mainVideo');
+  const clickedVideo = document.getElementById(`video-${userId}`);
+  
+  // 保存当前主视频的流
+  const previousMainStream = mainVideo.srcObject;
+  
+  // 交换视频流
   mainVideo.srcObject = stream;
+  clickedVideo.srcObject = previousMainStream;
 
-  // 高亮当前主视频框
+  // 更新边框样式
   document.querySelectorAll('.side-videos video').forEach(video => {
     video.style.borderColor = video.id === `video-${userId}` ? '#007bff' : '#ccc';
   });
 }
-
 
 
 function initializePeerConnection(userId) {
