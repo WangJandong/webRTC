@@ -40,6 +40,48 @@ body {
   margin-bottom: 20px;
 }
 
+.video-layout {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+
+#mainVideoContainer {
+  flex: 3;
+  position: relative;
+}
+
+#mainVideo {
+  width: 100%;
+  height: auto;
+  border: 2px solid #007bff;
+  border-radius: 10px;
+  background-color: #000;
+  object-fit: cover;
+}
+
+.side-videos {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.side-videos video {
+  width: 100%;
+  height: auto;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  background-color: #000;
+  object-fit: cover;
+  cursor: pointer;
+}
+
+.side-videos video:hover {
+  border-color: #007bff;
+}
+
 /* 视频样式 */
 video {
   width: 100%;

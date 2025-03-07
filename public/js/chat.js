@@ -25,7 +25,8 @@ let localStream;
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
     localStream = stream;
-    document.getElementById('localVideo').srcObject = stream;
+    const mainVideo = document.getElementById('mainVideo');
+    mainVideo.srcObject = stream;
 
     // 初始化媒体控制按钮
     initMediaControls();
@@ -100,14 +101,25 @@ socket.on('userLeft', ({ id }) => {
 function createOrUpdateRemoteVideo(userId, stream) {
   let videoElement = document.getElementById(`video-${userId}`);
   if (!videoElement) {
-    const videoContainer = document.querySelector('.video-container');
+    const sideVideoContainer = document.getElementById('sideVideoContainer');
     videoElement = document.createElement('video');
     videoElement.id = `video-${userId}`;
     videoElement.autoplay = true;
     videoElement.playsInline = true;
-    videoContainer.appendChild(videoElement);
+    videoElement.addEventListener('click', () => setMainVideo(userId, stream)); // 点击切换主视频
+    sideVideoContainer.appendChild(videoElement);
   }
   videoElement.srcObject = stream;
+}
+
+function setMainVideo(userId, stream) {
+  const mainVideo = document.getElementById('mainVideo');
+  mainVideo.srcObject = stream;
+
+  // 高亮当前主视频框
+  document.querySelectorAll('.side-videos video').forEach(video => {
+    video.style.borderColor = video.id === `video-${userId}` ? '#007bff' : '#ccc';
+  });
 }
 
 function initializePeerConnection(userId) {
