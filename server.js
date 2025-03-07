@@ -21,7 +21,11 @@ const server = https.createServer(httpsOptions, app);
 const io = new Server(server);
 
 // 预创建的房间列表
-const rooms = new Set(['room1', 'room2', 'room3', 'test']);
+const rooms = new Map(); // 修改为 Map 存储房间信息
+const preCreatedRooms = ['room1', 'room2', 'room3', 'test'];
+preCreatedRooms.forEach(room => {
+  rooms.set(room, new Map());
+});
 // 用户颜色映射
 const userColors = {};
 
@@ -39,31 +43,41 @@ app.get('/chat', (req, res) => {
 io.on('connection', (socket) => {
   console.log('a user connected');
 
-  socket.on('join', ({room, userName}) => {
-    if (rooms.has(room)) {
-      socket.join(room);
-      
-      // 为用户分配随机颜色
-      if (!userColors[userName]) {
-        userColors[userName] = getRandomColor();
-      }
-      
-      socket.emit('joined', {room, color: userColors[userName]});
-      
-      // 通知房间内其他用户有新用户加入
-      socket.to(room).emit('message', {
-        text: `${userName} has joined the room`,
-        user: 'System',
-        color: '#888888',
-        isSystem: true
-      });
-    } else {
-      socket.emit('error', 'Room does not exist');
+  socket.on('join', ({ room, userName }) => {
+    if (!rooms.has(room)) {
+      rooms.set(room, new Map());
     }
+    const roomUsers = rooms.get(room);
+
+    // 将新用户添加到房间
+    roomUsers.set(socket.id, { userName, color: getRandomColor() });
+    socket.join(room);
+
+    // 发送房间内现有用户列表给新用户
+    const existingUsers = Array.from(roomUsers.entries())
+      .filter(([id]) => id !== socket.id)
+      .map(([id, user]) => ({
+        id,
+        userName: user.userName,
+        color: user.color
+      }));
+
+    socket.emit('joined', {
+      room,
+      color: roomUsers.get(socket.id).color,
+      users: existingUsers
+    });
+
+    // 通知其他用户有新用户加入
+    socket.to(room).emit('userJoined', {
+      id: socket.id,
+      userName,
+      color: roomUsers.get(socket.id).color
+    });
   });
 
-  socket.on('signal', ({ signal, room }) => {
-    socket.to(room).emit('signal', signal);
+  socket.on('signal', ({ signal, targetUser }) => {
+    io.to(targetUser).emit('signal', { signal, userId: socket.id });
   });
 
   socket.on('message', ({ message, room, userName, color }) => {
@@ -84,6 +98,16 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    for (const [roomId, users] of rooms) {
+      if (users.has(socket.id)) {
+        users.delete(socket.id);
+        socket.to(roomId).emit('userLeft', { id: socket.id });
+        if (users.size === 0) {
+          rooms.delete(roomId);
+        }
+        break;
+      }
+    }
     console.log('user disconnected');
   });
 });
@@ -98,7 +122,7 @@ function getRandomColor() {
 }
 
 // 设置端口（HTTPS 通常使用 443）
-const PORT = process.env.PORT || 443;
+const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
   console.log(`HTTPS server listening on port ${PORT}`);

@@ -2,6 +2,8 @@
 const userName = sessionStorage.getItem('userName');
 const roomId = sessionStorage.getItem('roomId');
 const userColor = sessionStorage.getItem('userColor');
+const peerConnections = new Map(); // 存储所有对等连接
+
 
 if (!userName || !roomId) {
   window.location.href = '/';
@@ -43,29 +45,24 @@ socket.on('joined', (data) => {
   initializePeerConnection();
 });
 
-socket.on('signal', signal => {
-  if (signal.sdp) {
-    peerConnection.setRemoteDescription(new RTCSessionDescription(signal))
-      .then(() => {
-        if (signal.type === 'offer') {
-          return peerConnection.createAnswer();
-        }
-      })
-      .then(answer => {
-        if (answer) return peerConnection.setLocalDescription(answer);
-      })
-      .then(() => {
-        if (peerConnection.localDescription) {
-          socket.emit('signal', { 
-            signal: peerConnection.localDescription, 
-            room: roomId 
-          });
-        }
-      })
-      .catch(error => console.error('Error handling signal:', error));
-  } else if (signal) {
-    peerConnection.addIceCandidate(new RTCIceCandidate(signal))
-      .catch(e => console.error('Error adding ICE candidate:', e));
+socket.on('signal', async ({ signal, userId }) => {
+  let pc = peerConnections.get(userId);
+  if (!pc) {
+    pc = initializePeerConnection(userId);
+  }
+
+  if (signal.type === 'offer') {
+    await pc.setRemoteDescription(new RTCSessionDescription(signal));
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    socket.emit('signal', {
+      signal: pc.localDescription,
+      targetUser: userId
+    });
+  } else if (signal.type === 'answer') {
+    await pc.setRemoteDescription(new RTCSessionDescription(signal));
+  } else if (signal.candidate) {
+    await pc.addIceCandidate(new RTCIceCandidate(signal));
   }
 });
 
@@ -77,13 +74,48 @@ socket.on('image', imageInfo => {
   addImageToChat(imageInfo);
 });
 
-function initializePeerConnection() {
-  peerConnection = new RTCPeerConnection(configuration);
+socket.on('userJoined', async (user) => {
+  const pc = initializePeerConnection(user.id);
+  
+  // 创建并发送offer
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  socket.emit('signal', {
+    signal: pc.localDescription,
+    targetUser: user.id
+  });
+});
+
+socket.on('userLeft', ({ id }) => {
+  const videoElement = document.getElementById(`video-${id}`);
+  if (videoElement) {
+    videoElement.remove();
+  }
+  if (peerConnections.has(id)) {
+    peerConnections.get(id).close();
+    peerConnections.delete(id);
+  }
+});
+
+function createOrUpdateRemoteVideo(userId, stream) {
+  let videoElement = document.getElementById(`video-${userId}`);
+  if (!videoElement) {
+    const videoContainer = document.querySelector('.video-container');
+    videoElement = document.createElement('video');
+    videoElement.id = `video-${userId}`;
+    videoElement.autoplay = true;
+    videoElement.playsInline = true;
+    videoContainer.appendChild(videoElement);
+  }
+  videoElement.srcObject = stream;
+}
+
+function initializePeerConnection(userId) {
+  const peerConnection = new RTCPeerConnection(configuration);
+  peerConnections.set(userId, peerConnection);
 
   // 添加本地流
-  const localVideo = document.getElementById('localVideo');
-  if (localVideo.srcObject) {
-    const localStream = localVideo.srcObject;
+  if (localStream) {
     localStream.getTracks().forEach(track => {
       peerConnection.addTrack(track, localStream);
     });
@@ -91,26 +123,20 @@ function initializePeerConnection() {
 
   // 监听远程流
   peerConnection.ontrack = event => {
-    document.getElementById('remoteVideo').srcObject = event.streams[0];
+    createOrUpdateRemoteVideo(userId, event.streams[0]);
   };
 
   // ICE Candidate处理
   peerConnection.onicecandidate = ({ candidate }) => {
     if (candidate) {
-      socket.emit('signal', { signal: candidate, room: roomId });
+      socket.emit('signal', { 
+        signal: candidate, 
+        targetUser: userId 
+      });
     }
   };
 
-  // 创建Offer
-  peerConnection.createOffer()
-    .then(offer => peerConnection.setLocalDescription(offer))
-    .then(() => {
-      socket.emit('signal', { 
-        signal: peerConnection.localDescription, 
-        room: roomId 
-      });
-    })
-    .catch(error => console.error('Error creating offer:', error));
+  return peerConnection;
 }
 
 function sendMessage() {

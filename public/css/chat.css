@@ -34,19 +34,20 @@ body {
 }
 
 .video-container {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
   margin-bottom: 20px;
 }
 
+/* 视频样式 */
 video {
-  width: 300px;
-  height: 225px;
+  width: 100%;
+  height: auto;
   border: 2px solid #007bff;
   border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   background-color: #000;
+  object-fit: cover;
 }
 
 #uploadButton {
