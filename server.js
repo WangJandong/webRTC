@@ -48,11 +48,11 @@ io.on('connection', (socket) => {
       rooms.set(room, new Map());
     }
     const roomUsers = rooms.get(room);
-
+  
     // 将新用户添加到房间
     roomUsers.set(socket.id, { userName, color: getRandomColor() });
     socket.join(room);
-
+  
     // 发送房间内现有用户列表给新用户
     const existingUsers = Array.from(roomUsers.entries())
       .filter(([id]) => id !== socket.id)
@@ -61,17 +61,17 @@ io.on('connection', (socket) => {
         userName: user.userName,
         color: user.color
       }));
-
+  
     socket.emit('joined', {
       room,
       color: roomUsers.get(socket.id).color,
       users: existingUsers
     });
-
-    // 通知其他用户有新用户加入
+  
+    // 通知其他用户有新用户加入，包含用户名
     socket.to(room).emit('userJoined', {
       id: socket.id,
-      userName,
+      userName: userName,
       color: roomUsers.get(socket.id).color
     });
   });

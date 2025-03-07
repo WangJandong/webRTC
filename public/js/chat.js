@@ -76,6 +76,9 @@ socket.on('image', imageInfo => {
 });
 
 socket.on('userJoined', async (user) => {
+  // 立即为新用户创建一个视频框，即使还没有视频流
+  createOrUpdateRemoteVideo(user.id, null, user.userName);
+  
   const pc = initializePeerConnection(user.id);
   
   // 创建并发送offer
@@ -86,6 +89,50 @@ socket.on('userJoined', async (user) => {
     targetUser: user.id
   });
 });
+
+
+function createOrUpdateRemoteVideo(userId, stream, userName) {
+  let videoElement = document.getElementById(`video-${userId}`);
+  if (!videoElement) {
+    const sideVideoContainer = document.getElementById('sideVideoContainer');
+    const videoWrapper = document.createElement('div');
+    videoWrapper.className = 'video-wrapper';
+    
+    videoElement = document.createElement('video');
+    videoElement.id = `video-${userId}`;
+    videoElement.autoplay = true;
+    videoElement.playsInline = true;
+    
+    // 存储流的映射关系
+    if (stream) {
+      streamMappings.set(userId, stream);
+    }
+    
+    // 添加用户标识
+    const userLabel = document.createElement('div');
+    userLabel.className = 'video-user-label';
+    userLabel.textContent = userName || `用户 ${userId}`;
+    
+    videoWrapper.appendChild(videoElement);
+    videoWrapper.appendChild(userLabel);
+    sideVideoContainer.appendChild(videoWrapper);
+    
+    videoElement.addEventListener('click', () => {
+      if (stream) {
+        setMainVideo(userId);
+      }
+    });
+  }
+  
+  if (stream) {
+    streamMappings.set(userId, stream);
+    videoElement.srcObject = stream;
+  } else {
+    videoElement.srcObject = null;
+    videoElement.style.backgroundColor = '#000';
+    videoElement.poster = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  }
+}
 
 socket.on('userLeft', ({ id }) => {
   const videoElement = document.getElementById(`video-${id}`);
@@ -100,6 +147,11 @@ socket.on('userLeft', ({ id }) => {
 
 
 
+// ... existing code ...
+
+// 存储视频流的映射关系
+const streamMappings = new Map();
+
 function createOrUpdateRemoteVideo(userId, stream) {
   let videoElement = document.getElementById(`video-${userId}`);
   if (!videoElement) {
@@ -108,29 +160,61 @@ function createOrUpdateRemoteVideo(userId, stream) {
     videoElement.id = `video-${userId}`;
     videoElement.autoplay = true;
     videoElement.playsInline = true;
-    videoElement.addEventListener('click', () => setMainVideo(userId, stream)); // 点击切换主视频
+    
+    // 存储流的映射关系
+    if (stream) {
+      streamMappings.set(userId, stream);
+    }
+    
+    // 添加默认背景和用户标识
+    videoElement.style.backgroundColor = '#000';
+    const userLabel = document.createElement('div');
+    userLabel.className = 'video-user-label';
+    userLabel.textContent = `用户 ${userId}`;
+    sideVideoContainer.appendChild(userLabel);
+    
+    videoElement.addEventListener('click', () => {
+      if (stream) {
+        setMainVideo(userId);
+      }
+    });
+    
     sideVideoContainer.appendChild(videoElement);
   }
-  videoElement.srcObject = stream;
+  
+  if (stream) {
+    streamMappings.set(userId, stream);
+    videoElement.srcObject = stream;
+  } else {
+    videoElement.srcObject = null;
+    videoElement.poster = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  }
 }
 
-// 确保主视频框只显示本地视频或选中的远程视频
-function setMainVideo(userId, stream) {
+function setMainVideo(userId) {
   const mainVideo = document.getElementById('mainVideo');
   const clickedVideo = document.getElementById(`video-${userId}`);
   
-  // 保存当前主视频的流
-  const previousMainStream = mainVideo.srcObject;
+  // 获取当前主视频的用户ID
+  const currentMainUserId = [...streamMappings.entries()]
+    .find(([id, stream]) => stream === mainVideo.srcObject)?.[0];
+    
+  if (currentMainUserId) {
+    // 将主视频的流切换到侧边视频
+    const mainStream = streamMappings.get(currentMainUserId);
+    clickedVideo.srcObject = mainStream;
+  }
   
-  // 交换视频流
-  mainVideo.srcObject = stream;
-  clickedVideo.srcObject = previousMainStream;
+  // 将点击的视频流设置为主视频
+  const clickedStream = streamMappings.get(userId);
+  mainVideo.srcObject = clickedStream;
 
   // 更新边框样式
   document.querySelectorAll('.side-videos video').forEach(video => {
     video.style.borderColor = video.id === `video-${userId}` ? '#007bff' : '#ccc';
   });
 }
+
 
 
 function initializePeerConnection(userId) {
